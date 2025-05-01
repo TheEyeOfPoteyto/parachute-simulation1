@@ -52,25 +52,27 @@ else:
     background_img = Image.open(background_path).convert("RGBA")
 
     # Resize background to match figure size
-    fig_width, fig_height = 300, 600  # pixels
+    fig_width, fig_height = 300, 800  # pixels
     background_img = background_img.resize((fig_width, fig_height))
+# Resize parachuter to appropriate size
+parachuter_small = parachuter_img.resize((50, 50))  # Adjust size here
 
-    # Generate each frame as an image
-    frames = []
-    max_y = max(position) + 5
-    for y in position[::3]:  # Skip frames for speed
-        # Create a new image with the background
-        frame = background_img.copy()
+# Generate each frame as an image
+frames = []
+max_y = max(position) + 5
+for y in position[::3]:  # Fewer frames to speed it up
+    frame = background_img.copy()
 
-        # Calculate parachuter position
-        y_pos = int((y / max_y) * fig_height)
-        x_pos = int(fig_width / 2 - parachuter_img.width / 2)
-        y_pos = int(fig_height - y_pos - parachuter_img.height / 2)
+    # Calculate Y position (flipped for downward fall)
+    y_ratio = y / max_y
+    y_pos = int(y_ratio * fig_height)
+    x_pos = int(fig_width / 2 - parachuter_small.width / 2)
+    y_draw = y_pos  # No inversion needed; we simulate increasing downward
 
-        # Paste parachuter onto the background
-        frame.paste(parachuter_img, (x_pos, y_pos), parachuter_img)
+    # Paste parachuter
+    frame.paste(parachuter_small, (x_pos, y_draw), parachuter_small)
+    frames.append(frame)
 
-        frames.append(frame)
 
     # Save GIF to BytesIO
     gif_buf = BytesIO()
