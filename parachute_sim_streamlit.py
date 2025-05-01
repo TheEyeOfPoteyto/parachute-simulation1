@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from io import BytesIO
 import base64
+import os
 
 # Constants
 AIR_DENSITY = 1.2  # kg/m³
@@ -40,25 +41,41 @@ for t in time[1:]:
     velocity.append(v_new)
     position.append(y_new)
 
-# Generate each frame as an image
-frames = []
-for y in position[::3]:  # Skip every few frames for speed
-    fig, ax = plt.subplots(figsize=(3, 6))
-    ax.set_xlim(0, 1)
-    ax.set_ylim(max(position) + 5, 0)
-    ax.axis("off")
-    ax.plot(0.5, y, 'o', color='blue', markersize=20)
-    buf = BytesIO()
-    plt.savefig(buf, format="png", bbox_inches="tight")
-    plt.close(fig)
-    buf.seek(0)
-    frame = Image.open(buf)
-    frames.append(frame)
+# Load images
+parachuter_path = os.path.join("assets", "parachuter.png")
+background_path = os.path.join("assets", "sky_background.jpg")
 
-# Save GIF to BytesIO
-gif_buf = BytesIO()
-frames[0].save(gif_buf, format="GIF", save_all=True, append_images=frames[1:], duration=50, loop=0)
-gif_data = base64.b64encode(gif_buf.getvalue()).decode("utf-8")
+if not os.path.exists(parachuter_path) or not os.path.exists(background_path):
+    st.error("Parachuter or background image not found. Please ensure 'parachuter.png' and 'sky_background.jpg' are placed in the 'assets' directory.")
+else:
+    parachuter_img = Image.open(parachuter_path).convert("RGBA")
+    background_img = Image.open(background_path).convert("RGBA")
 
-# Display GIF in Streamlit
-st.markdown(f'<img src="data:image/gif;base64,{gif_data}" width="300">', unsafe_allow_html=True)
+    # Resize background to match figure size
+    fig_width, fig_height = 300, 600  # pixels
+    background_img = background_img.resize((fig_width, fig_height))
+
+    # Generate each frame as an image
+    frames = []
+    max_y = max(position) + 5
+    for y in position[::3]:  # Skip frames for speed
+        # Create a new image with the background
+        frame = background_img.copy()
+
+        # Calculate parachuter position
+        y_pos = int((y / max_y) * fig_height)
+        x_pos = int(fig_width / 2 - parachuter_img.width / 2)
+        y_pos = int(fig_height - y_pos - parachuter_img.height / 2)
+
+        # Paste parachuter onto the background
+        frame.paste(parachuter_img, (x_pos, y_pos), parachuter_img)
+
+        frames.append(frame)
+
+    # Save GIF to BytesIO
+    gif_buf = BytesIO()
+    frames[0].save(gif_buf, format="GIF", save_all=True, append_images=frames[1:], duration=50, loop=0)
+    gif_data = base64.b64encode(gif_buf.getvalue()).decode("utf-8")
+
+    # Display GIF in Streamlit
+    st.markdown(f'<img src="data:image/gif;base64,{gif_data}" width="{fig_width}">', unsafe_allow_html=True)
