@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+from PIL import Image
 from io import BytesIO
 import base64
 
@@ -40,32 +40,25 @@ for t in time[1:]:
     velocity.append(v_new)
     position.append(y_new)
 
-# Matplotlib animation setup
-fig, ax = plt.subplots(figsize=(3, 6))
-ax.set_xlim(0, 1)
-ax.set_ylim(0, max(position) + 5)
-ball, = ax.plot([], [], 'o', color='blue', markersize=20)
-
-def init():
-    ball.set_data([], [])
-    return ball,
-
-def update(i):
-    ball.set_data(0.5, position[i])
-    return ball,
-
-ani = animation.FuncAnimation(fig, update, frames=len(position),
-                              init_func=init, blit=True, interval=50)
-
-# Convert animation to GIF for Streamlit
-def convert_to_gif(anim):
+# Generate each frame as an image
+frames = []
+for y in position[::3]:  # Skip every few frames for speed
+    fig, ax = plt.subplots(figsize=(3, 6))
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, max(position) + 5)
+    ax.axis("off")
+    ax.plot(0.5, y, 'o', color='blue', markersize=20)
     buf = BytesIO()
-    anim.save(buf, format='gif', writer='pillow')
-    gif_data = base64.b64encode(buf.getvalue()).decode()
-    return gif_data
+    plt.savefig(buf, format="png", bbox_inches="tight")
+    plt.close(fig)
+    buf.seek(0)
+    frame = Image.open(buf)
+    frames.append(frame)
 
-if restart or True:  # Always generate gif on load
-    gif = convert_to_gif(ani)
-    st.markdown(f'<img src="data:image/gif;base64,{gif}" width="300">', unsafe_allow_html=True)
+# Save GIF to BytesIO
+gif_buf = BytesIO()
+frames[0].save(gif_buf, format="GIF", save_all=True, append_images=frames[1:], duration=50, loop=0)
+gif_data = base64.b64encode(gif_buf.getvalue()).decode("utf-8")
 
-
+# Display GIF in Streamlit
+st.markdown(f'<img src="data:image/gif;base64,{gif_data}" width="300">', unsafe_allow_html=True)
