@@ -45,7 +45,7 @@ frames = []
 for y in position[::3]:  # Skip every few frames for speed
     fig, ax = plt.subplots(figsize=(3, 6))
     ax.set_xlim(0, 1)
-    ax.set_ylim(0, max(position) + 5)
+    ax.set_ylim(max(position) + 5, 0)
     ax.axis("off")
     ax.plot(0.5, y, 'o', color='blue', markersize=20)
     buf = BytesIO()
