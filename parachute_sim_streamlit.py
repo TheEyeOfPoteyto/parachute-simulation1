@@ -113,3 +113,4 @@ if st.session_state.run_sim:
     ax.set_title("Velocity vs. Time")
     ax.legend()
     st.pyplot(fig)
+    plt.plot()
