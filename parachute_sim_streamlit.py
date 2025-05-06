@@ -1,9 +1,8 @@
-import streamlit as st
+import streamlit as st 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import io
 import base64
-import matplotlib.pyplot as plt
 
 # Simulation parameters
 def calculate_terminal_velocity(mass, g, D, d, A):
@@ -11,22 +10,32 @@ def calculate_terminal_velocity(mass, g, D, d, A):
     v_terminal = np.sqrt(mass * g / (k * A))
     return v_terminal
 
-def simulate_fall(v_terminal, duration, dt):
+def simulate_fall(v_terminal, g, duration, dt):
     t = np.arange(0, duration, dt)
     position = v_terminal * (t - (1 - np.exp(-t)))
-    return t, position
+    velocity = g * t  # Using your preferred formula
+    return t, position, velocity
 
-def create_parachute_frame(bg_img, parachute_img, y, max_y, fig_width, fig_height):
+def create_parachute_frame(bg_img, parachute_img, y, v, max_y, fig_width, fig_height):
     frame = bg_img.copy()
+    draw = ImageDraw.Draw(frame)
+
+    # Positioning parachute
     y_ratio = y / max_y
     y_pos = int(y_ratio * (fig_height - parachute_img.height))
     x_pos = int(fig_width / 2 - parachute_img.width / 2)
     frame.paste(parachute_img, (x_pos, y_pos), parachute_img)
+
+    # Display instantaneous velocity (top-left)
+    velocity_text = f"v = {v:.2f} m/s"
+    draw.rectangle([10, 10, 160, 40], fill=(255, 255, 255, 180))  # Background for readability
+    draw.text((15, 15), velocity_text, fill="black")
+
     return frame
 
-def generate_gif(frames):
+def generate_gif(frames, v_terminal):
     buf = io.BytesIO()
-    frames[0].save(buf, format='GIF', save_all=True, append_images=frames[1:], duration = max(5.0, 300 / v_terminal))
+    frames[0].save(buf, format='GIF', save_all=True, append_images=frames[1:], duration=max(5.0, 300 / v_terminal))
     gif_data = base64.b64encode(buf.getvalue()).decode("utf-8")
     return gif_data
 
@@ -59,16 +68,16 @@ if st.session_state.run_sim:
     duration = 3.0  # seconds
     dt = 0.05       # time step
 
-    t, position = simulate_fall(v_terminal, duration, dt)
+    t, position, velocity = simulate_fall(v_terminal, g, duration, dt)
     max_y = max(position) + 5
 
     # Create frames
     frames = []
-    for y in position[::2]:  # skip every 2nd frame for speed
-        frame = create_parachute_frame(background_img, parachuter_img, y, max_y, 300, 800)
+    for y, v in zip(position[::2], velocity[::2]):
+        frame = create_parachute_frame(background_img, parachuter_img, y, v, max_y, 300, 800)
         frames.append(frame)
 
-    gif_data = generate_gif(frames)
+    gif_data = generate_gif(frames, v_terminal)
 
     gif_placeholder = st.empty()
     gif_placeholder.markdown(f'<img src="data:image/gif;base64,{gif_data}" width="300">', unsafe_allow_html=True)
