@@ -1,74 +1,78 @@
-import streamlit as st
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from PIL import Image
+import streamlit as st 
 import numpy as np
+from PIL import Image, ImageDraw
 import io
+import base64
+import matplotlib.pyplot as plt
 
-# Title
+# Simulation parameters
+def calculate_terminal_velocity(mass, g, D, d, A):
+    k = D * d / 2
+    v_terminal = np.sqrt(mass * g / (k * A))
+    return v_terminal
+
+def simulate_fall(v_terminal, duration, dt):
+    t = np.arange(0, duration, dt)
+    position = v_terminal * (t - (1 - np.exp(-t)))
+    velocity = v_terminal * (1 - np.exp(-t))
+    return t, position, velocity
+
+def create_parachute_frame(bg_img, parachute_img, y, max_y, fig_width, fig_height, velocity):
+    frame = bg_img.copy()
+    y_ratio = y / max_y
+    y_pos = int(y_ratio * (fig_height - parachute_img.height))
+    x_pos = int(fig_width / 2 - parachute_img.width / 2)
+    frame.paste(parachute_img, (x_pos, y_pos), parachute_img)
+
+    draw = ImageDraw.Draw(frame)
+    draw.text((10, 10), f"v = {velocity:.2f} m/s", fill="black")
+    return frame
+
+def generate_gif(frames):
+    buf = io.BytesIO()
+    frames[0].save(buf, format='GIF', save_all=True, append_images=frames[1:], duration=max(5.0, 300 / v_terminal))
+    gif_data = base64.b64encode(buf.getvalue()).decode("utf-8")
+    return gif_data
+
+# UI Elements
 st.title("Parachute Terminal Velocity Simulation")
 
-# Sidebar sliders
-mass = st.sidebar.slider("Mass (kg)", 40.0, 120.0, 80.0, 5.0)
-air_resistance = st.sidebar.slider("Air Resistance Coefficient", 0.5, 2.5, 1.0, 0.1)
-g = st.sidebar.slider("Gravitational Acceleration (m/s²)", 5.0, 15.0, 9.8, 0.1)
+# Sidebar controls
+mass = st.sidebar.slider("Mass (kg)", 1.0, 100.0, 70.0, 1.0)
+g = st.sidebar.slider("Gravitational Acceleration (m/s²)", 5.0, 20.0, 9.81, 0.1)
+D = st.sidebar.slider("Drag Coefficient (D)", 0.1, 2.0, 1.0, 0.1)
+d = st.sidebar.slider("Air Density (kg/m³)", 0.5, 2.0, 1.2, 0.1)
+A = st.sidebar.slider("Cross-sectional Area (m²)", 0.1, 5.0, 1.0, 0.1)
 
-# Constants and initial values
-y0 = 800  # initial height in pixels
-x0 = 150  # x position (centered)
-dt = 0.1  # time step
+# Terminal velocity
+v_terminal = calculate_terminal_velocity(mass, g, D, d, A)
+st.write(f"**Terminal Velocity:** {v_terminal:.2f} m/s")
 
-# Calculated parameters
-k_over_m = air_resistance / mass
-terminal_velocity = mass * g / air_resistance
-
-# Load parachute image
-parachute_img = Image.open("parachute.png").resize((50, 50))
-parachute_arr = np.asarray(parachute_img)
-
-# Load background image
+# Load images
 background_img = Image.open("sky_background.jpg").resize((300, 800)).convert("RGBA")
+parachuter_img = Image.open("parachuter.png").resize((50, 50)).convert("RGBA")
 
-# Create figure and axis
-fig, ax = plt.subplots(figsize=(3, 8))
-ax.set_xlim(0, 300)
-ax.set_ylim(0, 800)
-ax.imshow(background_img, extent=[0, 300, 0, 800])
-ax.axis('off')
+# Animation generation
+if "run_sim" not in st.session_state:
+    st.session_state.run_sim = False
 
-# Create the parachute object
-imagebox = OffsetImage(parachute_arr, zoom=1)
-parachute = AnnotationBbox(imagebox, (x0, y0), frameon=False)
-ax.add_artist(parachute)
+if st.button("Start / Restart Animation"):
+    st.session_state.run_sim = True
 
-# Velocity text display
-velocity_text = ax.text(0.02, 0.95, '', transform=ax.transAxes, fontsize=12, color='white',
-                        bbox=dict(facecolor='black', alpha=0.5, edgecolor='none'))
+if st.session_state.run_sim:
+    duration = 3.0  # seconds
+    dt = 0.05       # time step
 
-def animate(frame):
-    t = frame * dt
-    v = terminal_velocity * (1 - np.exp(-k_over_m * t))
-    y = y0 - (terminal_velocity / k_over_m) * (t + (1 / k_over_m) * np.exp(-k_over_m * t) - (1 / k_over_m))
+    t, position, velocity = simulate_fall(v_terminal, duration, dt)
+    max_y = max(position) + 5
 
-    if y < 50:
-        y = 50  # Stop at ground level
+    # Create frames
+    frames = []
+    for y, v in zip(position[::2], velocity[::2]):  # skip every 2nd frame for speed
+        frame = create_parachute_frame(background_img, parachuter_img, y, max_y, 300, 800, v)
+        frames.append(frame)
 
-    parachute.xybox = (x0, y)
-    velocity_text.set_text(f"Velocity: {v:.2f} m/s")
-    return parachute, velocity_text
+    gif_data = generate_gif(frames)
 
-def convert_to_gif(ani):
-    buf = io.BytesIO()
-    ani.save(buf, format='gif', writer='pillow', fps=30, savefig_kwargs={'facecolor': 'white'})
-    buf.seek(0)
-    return buf
-
-# Animation button
-if st.button("Start / Restart Simulation"):
-    ani = animation.FuncAnimation(fig, animate, frames=200, interval=50, blit=True, repeat=False)
-    gif = convert_to_gif(ani)
-    st.image(gif, caption="Parachute Falling Simulation")
-
-# Display terminal velocity
-st.markdown(f"### Calculated Terminal Velocity: {terminal_velocity:.2f} m/s")
+    gif_placeholder = st.empty()
+    gif_placeholder.markdown(f'<img src="data:image/gif;base64,{gif_data}" width="300">', unsafe_allow_html=True)
