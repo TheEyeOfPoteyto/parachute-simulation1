@@ -1,4 +1,4 @@
-import streamlit as st 
+import streamlit as st
 import numpy as np
 from PIL import Image, ImageDraw
 import io
@@ -14,23 +14,19 @@ def calculate_terminal_velocity(mass, g, D, d, A):
 def simulate_fall(v_terminal, duration, dt):
     t = np.arange(0, duration, dt)
     position = v_terminal * (t - (1 - np.exp(-t)))
-    velocity = v_terminal * (1 - np.exp(-t))
-    return t, position, velocity
+    return t, position
 
-def create_parachute_frame(bg_img, parachute_img, y, max_y, fig_width, fig_height, velocity):
+def create_parachute_frame(bg_img, parachute_img, y, max_y, fig_width, fig_height):
     frame = bg_img.copy()
     y_ratio = y / max_y
     y_pos = int(y_ratio * (fig_height - parachute_img.height))
     x_pos = int(fig_width / 2 - parachute_img.width / 2)
     frame.paste(parachute_img, (x_pos, y_pos), parachute_img)
-
-    draw = ImageDraw.Draw(frame)
-    draw.text((10, 10), f"v = {velocity:.2f} m/s", fill="black")
     return frame
 
 def generate_gif(frames):
     buf = io.BytesIO()
-    frames[0].save(buf, format='GIF', save_all=True, append_images=frames[1:], duration=max(5.0, 300 / v_terminal))
+    frames[0].save(buf, format='GIF', save_all=True, append_images=frames[1:], duration = max(5.0, 300 / v_terminal))
     gif_data = base64.b64encode(buf.getvalue()).decode("utf-8")
     return gif_data
 
@@ -63,13 +59,13 @@ if st.session_state.run_sim:
     duration = 3.0  # seconds
     dt = 0.05       # time step
 
-    t, position, velocity = simulate_fall(v_terminal, duration, dt)
+    t, position = simulate_fall(v_terminal, duration, dt)
     max_y = max(position) + 5
 
     # Create frames
     frames = []
-    for y, v in zip(position[::2], velocity[::2]):  # skip every 2nd frame for speed
-        frame = create_parachute_frame(background_img, parachuter_img, y, max_y, 300, 800, v)
+    for y in position[::2]:  # skip every 2nd frame for speed
+        frame = create_parachute_frame(background_img, parachuter_img, y, max_y, 300, 800)
         frames.append(frame)
 
     gif_data = generate_gif(frames)
