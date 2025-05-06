@@ -45,8 +45,7 @@ def generate_gif(frames, duration_ms):
         save_all=True,
         append_images=frames[1:],
         duration=duration_ms,
-        loop=1  # <-- Play once only
-    )
+          )
     gif_data = base64.b64encode(buf.getvalue()).decode("utf-8")
     return gif_data
 
