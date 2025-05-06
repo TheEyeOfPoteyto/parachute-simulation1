@@ -38,14 +38,16 @@ def create_frame(bg_img, parachuter_img, y, v, max_y, width, height):
 
 # Generate GIF from frames
 def generate_gif(frames, duration_ms):
+    converted_frames = [frame.convert("P", dither=Image.NONE) for frame in frames]
     buf = io.BytesIO()
-    frames[0].save(
+    converted_frames[0].save(
         buf,
         format='GIF',
         save_all=True,
-        append_images=frames[1:],
+        append_images=converted_frames[1:],
         duration=duration_ms,
-          )
+        disposal=2  # helps avoid ghosting frames
+    )
     gif_data = base64.b64encode(buf.getvalue()).decode("utf-8")
     return gif_data
 
