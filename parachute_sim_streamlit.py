@@ -36,7 +36,7 @@ def create_parachute_frame(bg_img, parachute_img, y, velocity, max_y, fig_width,
 
 def generate_gif(frames, v_terminal):
     buf = io.BytesIO()
-    duration = max(5.0, 300 / v_terminal)
+    duration = 100
     frames[0].save(buf, format='GIF', save_all=True, append_images=frames[1:], duration=duration, loop=0)
     gif_data = base64.b64encode(buf.getvalue()).decode("utf-8")
     return gif_data
