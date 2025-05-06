@@ -34,12 +34,14 @@ def create_parachute_frame(bg_img, parachute_img, y, velocity, max_y, fig_width,
 
     return frame
 
-def generate_gif(frames, v_terminal):
+def generate_gif(frames):
     buf = io.BytesIO()
-    duration = max(5.0, 300 / v_terminal)
-    frames[0].save(buf, format='GIF', save_all=True, append_images=frames[1:], duration=duration, loop=0)
+    frames[0].save(
+        buf, format='GIF', save_all=True,
+        append_images=frames[1:], duration=100)
     gif_data = base64.b64encode(buf.getvalue()).decode("utf-8")
     return gif_data
+
 
 # UI Elements
 st.title("Parachute Terminal Velocity Simulation")
