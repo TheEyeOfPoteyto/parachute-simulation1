@@ -3,6 +3,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 import io
 import base64
+import matplotlib.pyplot as plt
 
 # Terminal velocity calculation
 def calculate_terminal_velocity(mass, g, D, d, A):
@@ -46,22 +47,22 @@ def generate_gif(frames, duration_ms):
         save_all=True,
         append_images=converted_frames[1:],
         duration=duration_ms,
-        disposal=2  # helps avoid ghosting frames
+        disposal=2  # prevent trailing effects
     )
     gif_data = base64.b64encode(buf.getvalue()).decode("utf-8")
     return gif_data
 
-
 # Streamlit UI
 st.title("Parachute Terminal Velocity Simulation")
 
-# Sliders
+# Sidebar sliders
 mass = st.sidebar.slider("Mass (kg)", 1.0, 100.0, 70.0, 1.0)
 g = st.sidebar.slider("Gravitational Acceleration (m/s²)", 5.0, 20.0, 9.81, 0.1)
 D = st.sidebar.slider("Drag Coefficient", 0.1, 2.0, 1.0, 0.1)
 d = st.sidebar.slider("Air Density (kg/m³)", 0.5, 2.0, 1.2, 0.1)
 A = st.sidebar.slider("Cross-sectional Area (m²)", 0.1, 5.0, 1.0, 0.1)
 
+# Calculate terminal velocity
 v_terminal = calculate_terminal_velocity(mass, g, D, d, A)
 st.write(f"**Terminal Velocity:** {v_terminal:.2f} m/s")
 
@@ -69,7 +70,7 @@ st.write(f"**Terminal Velocity:** {v_terminal:.2f} m/s")
 bg_img = Image.open("sky_background.jpg").resize((300, 1000)).convert("RGBA")
 parachuter_img = Image.open("parachuter.png").resize((50, 50)).convert("RGBA")
 
-# Store previous input and check if changed
+# Check input changes to prevent auto-run
 inputs = (mass, g, D, d, A)
 if "prev_inputs" not in st.session_state:
     st.session_state.prev_inputs = inputs
@@ -78,15 +79,15 @@ if st.session_state.prev_inputs != inputs:
     st.session_state.run_sim = False
     st.session_state.prev_inputs = inputs
 
-# Start / Restart button
+# Start button logic
 if "run_sim" not in st.session_state:
     st.session_state.run_sim = False
 
 if st.button("Start / Restart Animation"):
     st.session_state.run_sim = True
 
+# Run simulation and generate output
 if st.session_state.run_sim:
-    # Simulate longer to allow reaching terminal velocity
     duration = 8.0  # seconds
     dt = 0.05
 
@@ -94,6 +95,7 @@ if st.session_state.run_sim:
     max_y = max(y_vals) + 5
     width, height = bg_img.size
 
+    # Create animation frames
     frames = []
     for y, v in zip(y_vals[::2], v_vals[::2]):
         frame = create_frame(bg_img, parachuter_img, y, v, max_y, width, height)
@@ -101,3 +103,13 @@ if st.session_state.run_sim:
 
     gif_data = generate_gif(frames, duration_ms=50)
     st.markdown(f'<img src="data:image/gif;base64,{gif_data}" width="{width}">', unsafe_allow_html=True)
+
+    # Plotting velocity vs. time
+    fig, ax = plt.subplots()
+    ax.plot(t_vals, v_vals, label="Instantaneous Velocity", color='blue')
+    ax.axhline(y=v_terminal, color='red', linestyle='--', label="Terminal Velocity")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Velocity (m/s)")
+    ax.set_title("Velocity vs. Time")
+    ax.legend()
+    st.pyplot(fig)
