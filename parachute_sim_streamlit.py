@@ -1,6 +1,6 @@
 import streamlit as st 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 import io
 import base64
 
@@ -13,7 +13,7 @@ def calculate_terminal_velocity(mass, g, D, d, A):
 def simulate_fall(v_terminal, g, duration, dt):
     t = np.arange(0, duration, dt)
     position = v_terminal * (t - (1 - np.exp(-t)))
-    velocity = g * t  # Using your preferred formula
+    velocity = g * t  # Instantaneous velocity = g * t
     return t, position, velocity
 
 def create_parachute_frame(bg_img, parachute_img, y, v, max_y, fig_width, fig_height):
@@ -26,10 +26,15 @@ def create_parachute_frame(bg_img, parachute_img, y, v, max_y, fig_width, fig_he
     x_pos = int(fig_width / 2 - parachute_img.width / 2)
     frame.paste(parachute_img, (x_pos, y_pos), parachute_img)
 
-    # Display instantaneous velocity (top-left)
+    # Display instantaneous velocity in top-right
     velocity_text = f"v = {v:.2f} m/s"
-    draw.rectangle([10, 10, 160, 40], fill=(255, 255, 255, 180))  # Background for readability
-    draw.text((15, 15), velocity_text, fill="black")
+    text_width = 150
+    text_height = 30
+    margin = 10
+    x_text = fig_width - text_width - margin
+    y_text = margin
+    draw.rectangle([x_text, y_text, x_text + text_width, y_text + text_height], fill=(255, 255, 255, 180))
+    draw.text((x_text + 5, y_text + 5), velocity_text, fill="black")
 
     return frame
 
