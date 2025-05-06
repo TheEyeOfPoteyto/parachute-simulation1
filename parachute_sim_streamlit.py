@@ -38,9 +38,11 @@ def generate_gif(frames):
     buf = io.BytesIO()
     frames[0].save(
         buf, format='GIF', save_all=True,
-        append_images=frames[1:], duration=100)
+        append_images=frames[1:], duration=100, loop=0
+    )
     gif_data = base64.b64encode(buf.getvalue()).decode("utf-8")
     return gif_data
+
 
 
 # UI Elements
