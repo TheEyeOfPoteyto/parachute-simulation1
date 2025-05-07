@@ -9,14 +9,13 @@ import matplotlib.pyplot as plt
 def calculate_terminal_velocity(mass, g, D, d, A):
     k = D * d / 2
     v_terminal = np.sqrt(mass * g / (k * A))
-    return v_terminal
+    return v_terminal, k / mass
 
 # Motion simulation
-def simulate_fall(v_terminal, g, duration, dt):
+def simulate_fall(v_terminal, decay_rate, duration, dt):
     t = np.arange(0, duration, dt)
-    v = g * t
-    v = np.clip(v, 0, v_terminal)  # Cap at terminal velocity
-    y = v_terminal * (t - (1 - np.exp(-t)))  # Smoothed position
+    v = v_terminal * (1 - np.exp(-decay_rate * t))  # Exponential approach to terminal velocity
+    y = np.cumsum(v * dt)  # Numerical integration for position
     return t, y, v
 
 # Create frame with parachuter and velocity text
@@ -62,8 +61,8 @@ D = st.sidebar.slider("Drag Coefficient", 0.1, 2.0, 1.0, 0.1)
 d = st.sidebar.slider("Air Density (kg/m³)", 0.5, 2.0, 1.2, 0.1)
 A = st.sidebar.slider("Cross-sectional Area (m²)", 0.1, 5.0, 1.0, 0.1)
 
-# Calculate terminal velocity
-v_terminal = calculate_terminal_velocity(mass, g, D, d, A)
+# Calculate terminal velocity and decay rate
+v_terminal, decay_rate = calculate_terminal_velocity(mass, g, D, d, A)
 st.write(f"**Terminal Velocity:** {v_terminal:.2f} m/s")
 
 # Load images
@@ -91,7 +90,7 @@ if st.session_state.run_sim:
     duration = 8.0  # seconds
     dt = 0.05
 
-    t_vals, y_vals, v_vals = simulate_fall(v_terminal, g, duration, dt)
+    t_vals, y_vals, v_vals = simulate_fall(v_terminal, decay_rate, duration, dt)
     max_y = max(y_vals) + 5
     width, height = bg_img.size
 
