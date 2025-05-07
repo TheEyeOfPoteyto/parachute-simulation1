@@ -7,14 +7,13 @@ import matplotlib.pyplot as plt
 
 # Terminal velocity calculation
 def calculate_terminal_velocity(mass, g, D, d, A):
-    k = D * d / 2
-    v_terminal = np.sqrt(mass * g / (k * A))
-    return v_terminal, k / mass
+    v_terminal = np.sqrt((2 * mass * g) / (D * d * A))
+    return v_terminal
 
 # Motion simulation
-def simulate_fall(v_terminal, decay_rate, duration, dt):
+def simulate_fall(v_terminal, g, duration, dt):
     t = np.arange(0, duration, dt)
-    v = v_terminal * (1 - np.exp(-decay_rate * t))  # Exponential approach to terminal velocity
+    v = v_terminal * (1 - np.exp(-g * t / v_terminal))  # Correct exponential decay
     y = np.cumsum(v * dt)  # Numerical integration for position
     return t, y, v
 
@@ -61,15 +60,15 @@ D = st.sidebar.slider("Drag Coefficient", 0.1, 2.0, 1.0, 0.1)
 d = st.sidebar.slider("Air Density (kg/m³)", 0.5, 2.0, 1.2, 0.1)
 A = st.sidebar.slider("Cross-sectional Area (m²)", 0.1, 5.0, 1.0, 0.1)
 
-# Calculate terminal velocity and decay rate
-v_terminal, decay_rate = calculate_terminal_velocity(mass, g, D, d, A)
+# Calculate terminal velocity
+v_terminal = calculate_terminal_velocity(mass, g, D, d, A)
 st.write(f"**Terminal Velocity:** {v_terminal:.2f} m/s")
 
 # Load images
 bg_img = Image.open("sky_background.jpg").resize((300, 1000)).convert("RGBA")
 parachuter_img = Image.open("parachuter.png").resize((50, 50)).convert("RGBA")
 
-# Check input changes to prevent auto-run
+# Prevent auto-play when sliders change
 inputs = (mass, g, D, d, A)
 if "prev_inputs" not in st.session_state:
     st.session_state.prev_inputs = inputs
@@ -90,7 +89,7 @@ if st.session_state.run_sim:
     duration = 8.0  # seconds
     dt = 0.05
 
-    t_vals, y_vals, v_vals = simulate_fall(v_terminal, decay_rate, duration, dt)
+    t_vals, y_vals, v_vals = simulate_fall(v_terminal, g, duration, dt)
     max_y = max(y_vals) + 5
     width, height = bg_img.size
 
