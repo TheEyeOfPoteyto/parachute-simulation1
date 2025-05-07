@@ -62,10 +62,7 @@ A = st.sidebar.slider("Cross-sectional Area (m²)", 0.1, 5.0, 1.0, 0.1)
 
 # Calculate terminal velocity
 v_terminal = calculate_terminal_velocity(mass, g, D, d, A)
-v_99 = 0.99 * v_terminal  # 99% of terminal velocity
-t_99 = -(v_terminal / g) * np.log(0.01)  # Time to reach 99% terminal velocity
 st.write(f"**Terminal Velocity:** {v_terminal:.2f} m/s")
-st.write(f"**Time to Reach 99% of Terminal Velocity:** {t_99:.2f} s")
 
 # Load images
 bg_img = Image.open("sky_background.jpg").resize((300, 1000)).convert("RGBA")
@@ -109,8 +106,6 @@ if st.session_state.run_sim:
     fig, ax = plt.subplots()
     ax.plot(t_vals, v_vals, label="Instantaneous Velocity", color='blue')
     ax.axhline(y=v_terminal, color='red', linestyle='--', label="Terminal Velocity")
-    ax.axhline(y=v_99, color='green', linestyle='--', label="99% of Terminal Velocity")
-    ax.axvline(x=t_99, color='green', linestyle=':', label=f"t at 99%: {t_99:.2f} s")
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Velocity (m/s)")
     ax.set_title("Velocity vs. Time")
