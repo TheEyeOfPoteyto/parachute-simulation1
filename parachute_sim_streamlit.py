@@ -18,11 +18,16 @@ def simulate_fall(v_terminal, g, duration, dt):
     return t, y, v
 
 # Create frame with parachuter and velocity text
-def create_frame(bg_img, parachuter_img, y, v, max_y, width, height):
+def create_frame(bg_img, parachuter_img, y, v, max_y, width, height, y_99):
     frame = bg_img.copy()
     draw = ImageDraw.Draw(frame)
-    font = ImageFont.load_default()
 
+    # Draw 99% terminal velocity line
+    y_99_pos = int((y_99 / max_y) * (height - parachuter_img.height))
+    draw.line([(0, y_99_pos), (width, y_99_pos)], fill="green", width=2)
+    draw.text((10, y_99_pos - 15), "99% Terminal Velocity", fill="green")
+
+    # Position the parachuter
     y_ratio = y / max_y
     y_pos = int(y_ratio * (height - parachuter_img.height))
     x_pos = int(width / 2 - parachuter_img.width / 2)
@@ -31,19 +36,18 @@ def create_frame(bg_img, parachuter_img, y, v, max_y, width, height):
 
     # Add velocity text to top right
     velocity_text = f"v = {v:.2f} m/s"
-    draw.text((width - 120, 10), velocity_text, fill="black", font=font)
+    draw.text((width - 120, 10), velocity_text, fill="black")
 
     return frame
 
 # Generate GIF from frames
 def generate_gif(frames, duration_ms):
-    converted_frames = [frame.convert("P", dither=Image.NONE) for frame in frames]
     buf = io.BytesIO()
-    converted_frames[0].save(
+    frames[0].save(
         buf,
         format='GIF',
         save_all=True,
-        append_images=converted_frames[1:],
+        append_images=frames[1:],
         duration=duration_ms,
         disposal=2  # prevent trailing effects
     )
@@ -62,45 +66,32 @@ A = st.sidebar.slider("Cross-sectional Area (m²)", 0.1, 5.0, 1.0, 0.1)
 
 # Calculate terminal velocity
 v_terminal = calculate_terminal_velocity(mass, g, D, d, A)
+t_99 = -(v_terminal / g) * np.log(0.01)
+y_99 = v_terminal * (t_99 - (1 - np.exp(-g * t_99 / v_terminal)) / (g / v_terminal))
 st.write(f"**Terminal Velocity:** {v_terminal:.2f} m/s")
+st.write(f"**Time to Reach 99% of Terminal Velocity:** {t_99:.2f} s")
 
 # Load images
 bg_img = Image.open("sky_background.jpg").resize((300, 1000)).convert("RGBA")
 parachuter_img = Image.open("parachuter.png").resize((50, 50)).convert("RGBA")
 
-# Prevent auto-play when sliders change
-inputs = (mass, g, D, d, A)
-if "prev_inputs" not in st.session_state:
-    st.session_state.prev_inputs = inputs
-
-if st.session_state.prev_inputs != inputs:
-    st.session_state.run_sim = False
-    st.session_state.prev_inputs = inputs
-
 # Start button logic
-if "run_sim" not in st.session_state:
-    st.session_state.run_sim = False
-
 if st.button("Start / Restart Animation"):
-    st.session_state.run_sim = True
-
-# Run simulation and generate output
-if st.session_state.run_sim:
-    duration = 8.0  # seconds
+    duration = 8.0
     dt = 0.05
 
     t_vals, y_vals, v_vals = simulate_fall(v_terminal, g, duration, dt)
     max_y = max(y_vals) + 5
     width, height = bg_img.size
 
-    # Create animation frames
     frames = []
     for y, v in zip(y_vals[::2], v_vals[::2]):
-        frame = create_frame(bg_img, parachuter_img, y, v, max_y, width, height)
+        frame = create_frame(bg_img, parachuter_img, y, v, max_y, width, height, y_99)
         frames.append(frame)
 
     gif_data = generate_gif(frames, duration_ms=50)
     st.markdown(f'<img src="data:image/gif;base64,{gif_data}" width="{width}">', unsafe_allow_html=True)
+
 
     # Plotting velocity vs. time
     fig, ax = plt.subplots()
